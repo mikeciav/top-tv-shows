@@ -32,14 +32,18 @@ class Episode:
         url = "https://www.imdb.com/title/" + self.episodeId
         response = urlopen(url)
         epPageSoup = BeautifulSoup(response.read(), "html.parser")
-        imgAlt = self.episodeTitle + " Poster"
-        self.imageUrl = epPageSoup.find("img", {"alt": imgAlt})["src"]
         try:
+            imgAlt = self.episodeTitle + " Poster"
+            self.imageUrl = epPageSoup.find("img", {"alt": imgAlt})["src"]
             [season, episode] = epPageSoup.find("div", {"class": "button_panel"}).find("div", {"class": "bp_heading"}).get_text().split(" | ")
             self.seasonNumber = season.strip().split(" ")[1]
             self.episodeNumber = episode.strip().split(" ")[1]
         except (KeyError, ValueError) as e:
             print("Malformed data from the web - skipping season / episode info")
+            self.seasonNumber = ""
+            self.episodeNumber = ""
+        except (TypeError) as e:
+            print("Malformed image url from the web - skipping season / episode info")
             self.seasonNumber = ""
             self.episodeNumber = ""
 
@@ -100,32 +104,38 @@ def appendEpisodeToHtmlPage(ep):
 def endHtmlPage():
     return """</div></body></html>"""
 
-fileObject = open("htmlInputMaster.txt", "r")
-html = fileObject.read()
-fileObject.close()
-
-soup = BeautifulSoup(html, 'html.parser')
-episodeDivs = getEpisodeDivs(soup)
-showTitleList = []
+#Begin main process
+showTitleList = set()
 rankToEpisodeMap = {}
 rank = 1
+startAt = 1
+while rank < 106:
+    url = """https://www.imdb.com/search/title/?title_type=tv_episode&num_votes=1000,&sort=user_rating,desc""" + "&start=" + str(startAt)
+    response = urlopen(url)
+    html = response.read()
+    soup = BeautifulSoup(html, "html.parser")
 
-for div in episodeDivs:
-    episode = Episode(div)
-    if episode.showTitle in showTitleList:
-        print("Skipping duplicate show: {}".format(episode.showTitle))
-        continue
-    if((int (episode.year)) < 2000):
-        print("Skipping show from before 2000")
-        continue
-    #if((int (episode.year)) in [2018, 2017, 2016]):
-    #   print("Skipping show from after 2016")
-    #  continue
-    
-    episode.ranking = rank
-    rankToEpisodeMap[rank] = episode
-    rank+=1
-    showTitleList.append(episode.showTitle)
+
+    episodeDivs = getEpisodeDivs(soup)
+    for div in episodeDivs:
+        episode = Episode(div)
+        if episode.showTitle in showTitleList:
+            print("Skipping duplicate show: {}".format(episode.showTitle))
+            continue
+        if((int (episode.year)) < 2000):
+            print("Skipping show from before 2000")
+            continue
+        #if((int (episode.year)) in [2018, 2017, 2016]):
+        #   print("Skipping show from after 2016")
+        #  continue
+        
+        episode.ranking = rank
+        rankToEpisodeMap[rank] = episode
+        rank+=1
+        showTitleList.add(episode.showTitle)
+        print(episode.showTitle, flush=True)
+
+    startAt+=50
 
 output = createHtmlPage()
 
