@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup, Tag
 from urllib.request import urlopen
 from Episode import Episode
+import configparser
 
 def getEpisodeDivs(soup):
     def isListerItemModeAdvanced(tag):
@@ -49,12 +50,27 @@ def appendEpisodeToHtmlPage(ep):
 def endHtmlPage():
     return """</div></body></html>"""
 
+def loadConfig():
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+    return config
+
+
+
 #Begin main process
+options = loadConfig()
+if len(options["DEFAULT"]) == 0:
+    print("No defaults - exiting...")
+    exit()
+else:
+    options = options["DEFAULT"]
+
 showTitleList = set()
 rankToEpisodeMap = {}
 rank = 1
 startAt = 1
-while rank < 106:
+maxRank = int(options.get("numEntries", 106))
+while rank < maxRank:
     url = """https://www.imdb.com/search/title/?title_type=tv_episode&num_votes=1000,&sort=user_rating,desc""" + "&start=" + str(startAt)
     response = urlopen(url)
     html = response.read()
@@ -64,11 +80,14 @@ while rank < 106:
     episodeDivs = getEpisodeDivs(soup)
     for div in episodeDivs:
         episode = Episode(div)
-        if episode.showTitle in showTitleList:
+        if options.getboolean('skipDuplicateShows') and (episode.showTitle in showTitleList):
             print("Skipping duplicate show: {}".format(episode.showTitle))
             continue
-        if((int (episode.year)) < 2000):
-            print("Skipping show from before 2000")
+        if((int (episode.year)) < int(options.get('minYear', 0))):
+            print("Skipping show from before {}".format(options.get('minYear', 0)))
+            continue
+        if((int (episode.year)) > int(options.get('maxYear', 9999))):
+            print("Skipping show from after {}".format(options.get('maxYear', 9999)))
             continue
         #if((int (episode.year)) in [2018, 2017, 2016]):
         #   print("Skipping show from after 2016")
@@ -78,7 +97,7 @@ while rank < 106:
         rankToEpisodeMap[rank] = episode
         rank+=1
         showTitleList.add(episode.showTitle)
-        print(episode.showTitle, flush=True)
+        print(episode.showTitle)
 
     startAt+=50
 
