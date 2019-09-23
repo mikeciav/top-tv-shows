@@ -71,7 +71,7 @@ rank = 1
 startAt = 1
 maxRank = int(options.get("numEntries", 106))
 while rank < maxRank:
-    url = """https://www.imdb.com/search/title/?title_type=tv_episode&num_votes=1000,&sort=user_rating,desc""" + "&start=" + str(startAt)
+    url = """https://www.imdb.com/search/title/?title_type=tv_episode&num_votes=1000,&count=250,&sort=user_rating,desc""" + "&start=" + str(startAt)
     response = urlopen(url)
     html = response.read()
     soup = BeautifulSoup(html, "html.parser")
@@ -99,7 +99,10 @@ while rank < maxRank:
         showTitleList.add(episode.showTitle)
         print(episode.showTitle)
 
-    startAt+=50
+        if rank > maxRank:
+            break
+
+    startAt+=250
 
 output = createHtmlPage()
 
