@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup, Tag
-from urllib.request import urlopen
+from urllib.request import build_opener, HTTPCookieProcessor, urlopen
 
 class Episode:
     def getShowTitle(self, episode):
@@ -14,7 +14,12 @@ class Episode:
         return iden
 
     def getYear(self, episode):
-        return episode.h3("span")[2].get_text().strip()[1:-1]
+        yurr = episode.h3("span")[2].get_text().strip()[1:-1]
+        # handle weird edge case with The Morning Show having (I) in its year for some reason
+        if "I) (" in yurr:
+            yurr = yurr[4:]
+        return yurr
+
 
     def getRating(self, episode):
         return episode.find("div", {"class": "ratings-bar"}).div.strong.get_text().strip()
@@ -29,21 +34,24 @@ class Episode:
         return desc
 
     def getExternalData(self):
-        url = "https://www.imdb.com/title/" + self.episodeId
-        response = urlopen(url)
+        url = "https://www.imdb.com/title/" + self.episodeId + "/"
+        opener = build_opener(HTTPCookieProcessor())
+        response = opener.open(url)
         epPageSoup = BeautifulSoup(response.read(), "html.parser")
         try:
-            imgAlt = self.episodeTitle + " Poster"
-            self.imageUrl = epPageSoup.find("img", {"alt": imgAlt})["src"]
-            [season, episode] = epPageSoup.find("div", {"class": "button_panel"}).find("div", {"class": "bp_heading"}).get_text().split(" | ")
-            self.seasonNumber = season.strip().split(" ")[1]
-            self.episodeNumber = episode.strip().split(" ")[1]
+            divClass = "ipc-media--baseAlt"
+            self.imageUrl = epPageSoup.find("div", {"class": divClass}).find("img")["src"]
+            [season, episode] = epPageSoup.find("div", {"data-testid": "hero-subnav-bar-season-episode-numbers-section"}).get_text().split(".")
+            self.seasonNumber = season.strip()[1:]
+            self.episodeNumber = episode.strip()[1:]
         except (KeyError, ValueError) as e:
             print("Malformed data from the web - skipping season / episode info")
+            self.imageUrl = ""
             self.seasonNumber = ""
             self.episodeNumber = ""
         except (TypeError) as e:
             print("Malformed image url from the web - skipping season / episode info")
+            self.imageUrl = ""
             self.seasonNumber = ""
             self.episodeNumber = ""
 

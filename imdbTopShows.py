@@ -44,7 +44,8 @@ def appendEpisodeToHtmlPage(ep):
                                     </div>
                                 </div>
                             </div>
-                        </div>""".format(ep.description)
+                        </div>
+                        <hr>""".format(ep.description)
     return ret
 
 def endHtmlPage():
@@ -71,7 +72,7 @@ rank = 1
 startAt = 1
 maxRank = int(options.get("numEntries", 106))
 while rank < maxRank:
-    url = """https://www.imdb.com/search/title/?title_type=tv_episode&num_votes=1000,&count=250,&sort=user_rating,desc""" + "&start=" + str(startAt)
+    url = """https://www.imdb.com/search/title/?title_type=tv_episode&num_votes=1000,&sort=user_rating,desc""" + "&start=" + str(startAt)
     response = urlopen(url)
     html = response.read()
     soup = BeautifulSoup(html, "html.parser")
@@ -102,7 +103,7 @@ while rank < maxRank:
         if rank > maxRank:
             break
 
-    startAt+=250
+    startAt+=50
 
 output = createHtmlPage()
 
@@ -119,6 +120,6 @@ for ranking in sorted(rankToEpisodeMap.keys(), reverse=True):
     output += appendEpisodeToHtmlPage(episode)
 
 output += endHtmlPage()
-fileObject = open("episodes.html", "w")
+fileObject = open("episodes-2022.html", "w")
 fileObject.write(BeautifulSoup(output, "html.parser").prettify())
 fileObject.close()
